@@ -2,6 +2,8 @@ package com.androidmonk.to_do;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 import androidx.recyclerview.widget.DividerItemDecoration;
 import androidx.recyclerview.widget.ItemTouchHelper;
 import androidx.recyclerview.widget.LinearLayoutManager;
@@ -9,6 +11,7 @@ import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 
 import com.androidmonk.to_do.database.AppDatabase;
@@ -56,7 +59,7 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
                         int position = viewHolder.getAdapterPosition();
                         List<TaskEntry> tasks = mAdapter.getTasks();
                         mDb.taskDao().deleteTask(tasks.get(position));
-                        retriveTask();
+
                     }
                 });
             }
@@ -72,30 +75,22 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
         });
 
         mDb = AppDatabase.getInstance(getApplicationContext());
-
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
         retriveTask();
 
     }
 
-    private void retriveTask() {
-        AppExecutors.getInstance().diskIO().execute(new Runnable() {
-            @Override
-            public void run() {
-                final List<TaskEntry> taskEntries = mDb.taskDao().loadAllTasks();
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        mAdapter.setTasks(taskEntries);
-                    }
-                });
 
+
+    private void retriveTask() {
+        final LiveData<List<TaskEntry>> taskEntries = mDb.taskDao().loadAllTasks();
+        taskEntries.observe(this, new Observer<List<TaskEntry>>() {
+            @Override
+            public void onChanged(List<TaskEntry> taskEntries) {
+                Log.d(TAG, "Receiving database update from LiveData");
+                mAdapter.setTasks(taskEntries);
             }
         });
+
     }
 
     @Override

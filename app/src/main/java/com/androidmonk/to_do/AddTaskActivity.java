@@ -2,9 +2,12 @@ package com.androidmonk.to_do;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
+import androidx.lifecycle.LiveData;
+import androidx.lifecycle.Observer;
 
 import android.content.Intent;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -59,19 +62,16 @@ public class AddTaskActivity extends AppCompatActivity {
             if (mTaskId == DEFAULT_TASK_ID){
                 //populate the UI
                 mTaskId = intent.getIntExtra(EXTRA_TASK_ID, DEFAULT_TASK_ID);
-                AppExecutors.getInstance().diskIO().execute(new Runnable() {
+                final LiveData<TaskEntry> task = mDb.taskDao().loadTaskById(mTaskId);
+                task.observe(this, new Observer<TaskEntry>() {
                     @Override
-                    public void run() {
-                        final TaskEntry taskEntry = mDb.taskDao().loadTaskById(mTaskId);
-                        runOnUiThread(new Runnable() {
-                            @Override
-                            public void run() {
-                                populateUI(taskEntry);
-                            }
-                        });
-
+                    public void onChanged(TaskEntry taskEntry) {
+                        task.removeObserver(this); //We do not remove the observer
+                        Log.d(TAG, "Receiving Database update from LiveData");
+                        populateUI(taskEntry);
                     }
                 });
+
             }
         }
     }
