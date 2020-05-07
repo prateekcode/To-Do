@@ -11,7 +11,11 @@ import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 
+import com.androidmonk.to_do.database.AppDatabase;
+import com.androidmonk.to_do.database.TaskEntry;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
+
+import java.util.List;
 
 public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemClickListener {
 
@@ -19,6 +23,8 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
     public static final String TAG = MainActivity.class.getSimpleName();
     private RecyclerView mRecyclerView;
     private TaskAdapter mAdapter;
+
+    private AppDatabase mDb;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -42,8 +48,17 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
             }
 
             @Override
-            public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int swipeDir) {
-
+            public void onSwiped(@NonNull final RecyclerView.ViewHolder viewHolder, int swipeDir) {
+                //Here implementing delete features
+                AppExecutors.getInstance().diskIO().execute(new Runnable() {
+                    @Override
+                    public void run() {
+                        int position = viewHolder.getAdapterPosition();
+                        List<TaskEntry> tasks = mAdapter.getTasks();
+                        mDb.taskDao().deleteTask(tasks.get(position));
+                        retriveTask();
+                    }
+                });
             }
         }).attachToRecyclerView(mRecyclerView);
 
@@ -56,8 +71,32 @@ public class MainActivity extends AppCompatActivity implements TaskAdapter.ItemC
             }
         });
 
+        mDb = AppDatabase.getInstance(getApplicationContext());
+
     }
 
+    @Override
+    protected void onResume() {
+        super.onResume();
+        retriveTask();
+
+    }
+
+    private void retriveTask() {
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                final List<TaskEntry> taskEntries = mDb.taskDao().loadAllTasks();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        mAdapter.setTasks(taskEntries);
+                    }
+                });
+
+            }
+        });
+    }
 
     @Override
     public void onItemClickListener(int itemId) {

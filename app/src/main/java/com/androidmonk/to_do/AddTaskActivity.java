@@ -11,6 +11,11 @@ import android.widget.EditText;
 import android.widget.RadioButton;
 import android.widget.RadioGroup;
 
+import com.androidmonk.to_do.database.AppDatabase;
+import com.androidmonk.to_do.database.TaskEntry;
+
+import java.util.Date;
+
 public class AddTaskActivity extends AppCompatActivity {
 
     // Extra for the task ID to be received in the intent
@@ -32,12 +37,17 @@ public class AddTaskActivity extends AppCompatActivity {
 
     private int mTaskId = DEFAULT_TASK_ID;
 
+    //Member variable for database
+    private AppDatabase mDb;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_add_task);
 
         initViews();
+
+        mDb = AppDatabase.getInstance(getApplicationContext());
 
         if (savedInstanceState != null && savedInstanceState.containsKey(INSTANCE_TASK_ID)){
             mTaskId = savedInstanceState.getInt(INSTANCE_TASK_ID, DEFAULT_TASK_ID);
@@ -72,10 +82,25 @@ public class AddTaskActivity extends AppCompatActivity {
         });
     }
 
-    //private void populateUI(TaskEntry task) { }
+    private void populateUI(TaskEntry task) {
+
+    }
 
 
     public void onSaveButtonClicked() {
+        String description = mEditText.getText().toString();
+        int priority = getPriorityFromView();
+        Date date = new Date();
+
+        final TaskEntry taskEntry = new TaskEntry(description, priority, date);
+        AppExecutors.getInstance().diskIO().execute(new Runnable() {
+            @Override
+            public void run() {
+                mDb.taskDao().insertTask(taskEntry);
+                finish();
+            }
+        });
+
     }
 
     public int getPriorityFromView(){
